@@ -3,10 +3,6 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// ⚠️ IMPORTANT: Replace with your Firebase credentials from Google Cloud Console
-// Get these from: https://console.firebase.google.com/
-// Project Settings → Service Accounts → Generate new private key (Web SDK)
-
 const FIREBASE_CONFIG = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "YOUR_API_KEY",
   authDomain:
