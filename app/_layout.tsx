@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import "react-native-reanimated";
 import { useAuthStore } from "../store/authStore";
+import { THEME } from "../constants/theme";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,7 +27,20 @@ export default function RootLayout() {
 
   return (
     <>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerStyle: {
+            backgroundColor: THEME.background,
+          },
+          headerTintColor: THEME.textMain,
+          headerTitleStyle: {
+            fontWeight: "900",
+            fontSize: 18,
+          },
+          headerShadowVisible: false,
+        }}
+      >
         {isAuthenticated ? (
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         ) : (
@@ -40,7 +54,7 @@ export default function RootLayout() {
         )}
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </>
   );
 }

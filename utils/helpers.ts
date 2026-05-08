@@ -34,7 +34,7 @@ export const formatPhoneNumber = (phone: string): string => {
  */
 export const isValidPhoneNumber = (phone: string): boolean => {
   const cleaned = phone.replace(/\D/g, "");
-  return cleaned.length === 10 || cleaned.length === 12;
+  return cleaned.length === 10;
 };
 
 /**
@@ -72,16 +72,33 @@ export const generateWhatsAppLink = (
 /**
  * Calculate days since date
  */
-export const getDaysSince = (date?: Date): number => {
+export const getDaysSince = (date?: Date | string | number): number => {
   if (!date) return 999;
-  return differenceInDays(new Date(), date);
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return 999;
+  return differenceInDays(new Date(), d);
 };
 
 /**
  * Format date to readable format
  */
-export const formatDate = (date: Date): string => {
-  return formatDistance(date, new Date(), { addSuffix: true });
+export const formatDate = (date: Date | string | number): string => {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "Unknown Date";
+  return formatDistance(d, new Date(), { addSuffix: true });
+};
+
+/**
+ * Format date to simple DD/MM/YYYY
+ */
+export const formatSimpleDate = (date: Date | string | number): string => {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "Unknown";
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 /**

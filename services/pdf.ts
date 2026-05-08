@@ -87,12 +87,12 @@ export const sharePDF = async (
 ): Promise<boolean> => {
   try {
     // Save to temporary location
-    const tempDir = FileSystem.cacheDirectory;
+    const tempDir = (FileSystem as any).cacheDirectory;
     const filePath = `${tempDir}${fileName}.pdf`;
 
     // Write base64 to file
     await FileSystem.writeAsStringAsync(filePath, pdfBase64, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: (FileSystem as any).EncodingType?.Base64 || "base64",
     });
 
     // Share file
@@ -120,7 +120,7 @@ export const savePDFToDevice = async (
   fileName: string,
 ): Promise<string> => {
   try {
-    const dir = `${FileSystem.documentDirectory}Khata/`;
+    const dir = `${(FileSystem as any).documentDirectory}Khata/`;
 
     // Ensure directory exists
     const dirInfo = await FileSystem.getInfoAsync(dir);
@@ -131,7 +131,7 @@ export const savePDFToDevice = async (
     // Save file
     const filePath = `${dir}${fileName}.pdf`;
     await FileSystem.writeAsStringAsync(filePath, pdfBase64, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: (FileSystem as any).EncodingType?.Base64 || "base64",
     });
 
     return filePath;
@@ -169,7 +169,7 @@ function buildLedgerHTML(data: InvoiceData): string {
       (entry, idx) => `
     <tr>
       <td>${idx + 1}</td>
-      <td>${formatDate(entry.date)}</td>
+      <td>${formatDate(entry.createdAt)}</td>
       <td>${entry.type === "credit" ? "Credit (Udhar)" : "Payment"}</td>
       <td style="text-align: right;">${
         entry.type === "credit"
@@ -541,7 +541,7 @@ async function convertHTMLToPDF(html: string): Promise<string> {
  */
 export const listSavedPDFs = async (): Promise<string[]> => {
   try {
-    const dir = `${FileSystem.documentDirectory}Khata/`;
+    const dir = `${(FileSystem as any).documentDirectory}Khata/`;
     const dirInfo = await FileSystem.getInfoAsync(dir);
 
     if (!dirInfo.exists) {
@@ -561,7 +561,7 @@ export const listSavedPDFs = async (): Promise<string[]> => {
  */
 export const deleteSavedPDF = async (fileName: string): Promise<boolean> => {
   try {
-    const dir = `${FileSystem.documentDirectory}Khata/`;
+    const dir = `${(FileSystem as any).documentDirectory}Khata/`;
     const filePath = `${dir}${fileName}`;
 
     await FileSystem.deleteAsync(filePath);

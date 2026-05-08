@@ -3,13 +3,22 @@
  * Manages shops and shop selection for users with multiple stores
  */
 
+import React from "react";
 import { db } from "@/config/firebase";
 import { Shop, User } from "@/types/index";
 import {
+    addDoc,
     arrayRemove,
     arrayUnion,
     collection,
-    Timestamp
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    Timestamp,
+    updateDoc,
+    where
 } from "firebase/firestore";
 
 export const shopService = {
@@ -24,7 +33,7 @@ export const shopService = {
     try {
       // Create shop document
       const shopRef = collection(db, "shops");
-      const newShop = await db.collection("shops").add({
+      const newShop = await addDoc(shopRef, {
         name: shopName,
         ownerUid: userId,
         ownerPhone: ownerPhone,
@@ -35,13 +44,11 @@ export const shopService = {
       });
 
       // Add shop ID to user's shops array
-      await db
-        .collection("users")
-        .doc(userId)
-        .update({
-          shops: arrayUnion(newShop.id),
-          currentShopId: newShop.id, // Set as current shop
-        });
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        shops: arrayUnion(newShop.id),
+        currentShopId: newShop.id, // Set as current shop
+      });
 
       console.log(`✅ Created shop: ${shopName}`);
       return newShop.id;
@@ -56,7 +63,8 @@ export const shopService = {
    */
   async getUserShops(userId: string): Promise<Shop[]> {
     try {
-      const userDoc = await db.collection("users").doc(userId).get();
+      const userRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userRef);
       const shopIds = userDoc.data()?.shops || [];
 
       if (shopIds.length === 0) {
@@ -66,8 +74,9 @@ export const shopService = {
       // Fetch all shops
       const shops: Shop[] = [];
       for (const shopId of shopIds) {
-        const shopDoc = await db.collection("shops").doc(shopId).get();
-        if (shopDoc.exists) {
+        const shopRef = doc(db, "shops", shopId);
+        const shopDoc = await getDoc(shopRef);
+        if (shopDoc.exists()) {
           shops.push({
             id: shopDoc.id,
             ...shopDoc.data(),
@@ -87,8 +96,9 @@ export const shopService = {
    */
   async getShop(shopId: string): Promise<Shop | null> {
     try {
-      const shopDoc = await db.collection("shops").doc(shopId).get();
-      if (shopDoc.exists) {
+      const shopRef = doc(db, "shops", shopId);
+      const shopDoc = await getDoc(shopRef);
+      if (shopDoc.exists()) {
         return {
           id: shopDoc.id,
           ...shopDoc.data(),
@@ -106,13 +116,11 @@ export const shopService = {
    */
   async updateShop(shopId: string, updates: Partial<Shop>): Promise<void> {
     try {
-      await db
-        .collection("shops")
-        .doc(shopId)
-        .update({
-          ...updates,
-          updatedAt: Timestamp.now(),
-        });
+      const shopRef = doc(db, "shops", shopId);
+      await updateDoc(shopRef, {
+        ...updates,
+        updatedAt: Timestamp.now(),
+      });
       console.log(`✅ Updated shop: ${shopId}`);
     } catch (error) {
       console.error("Error updating shop:", error);
@@ -125,7 +133,8 @@ export const shopService = {
    */
   async setCurrentShop(userId: string, shopId: string): Promise<void> {
     try {
-      await db.collection("users").doc(userId).update({
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
         currentShopId: shopId,
       });
       console.log(`✅ Set current shop: ${shopId}`);
@@ -140,7 +149,8 @@ export const shopService = {
    */
   async getCurrentShop(userId: string): Promise<Shop | null> {
     try {
-      const userDoc = await db.collection("users").doc(userId).get();
+      const userRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userRef);
       const currentShopId = userDoc.data()?.currentShopId;
 
       if (!currentShopId) {
@@ -159,21 +169,17 @@ export const shopService = {
    */
   async addStaff(shopId: string, staffUserId: string): Promise<void> {
     try {
-      await db
-        .collection("shops")
-        .doc(shopId)
-        .update({
-          staff: arrayUnion(staffUserId),
-          updatedAt: Timestamp.now(),
-        });
+      const shopRef = doc(db, "shops", shopId);
+      await updateDoc(shopRef, {
+        staff: arrayUnion(staffUserId),
+        updatedAt: Timestamp.now(),
+      });
 
       // Also add shop to staff member's shops array
-      await db
-        .collection("users")
-        .doc(staffUserId)
-        .update({
-          shops: arrayUnion(shopId),
-        });
+      const userRef = doc(db, "users", staffUserId);
+      await updateDoc(userRef, {
+        shops: arrayUnion(shopId),
+      });
 
       console.log(`✅ Added staff member to shop`);
     } catch (error) {
@@ -187,21 +193,17 @@ export const shopService = {
    */
   async removeStaff(shopId: string, staffUserId: string): Promise<void> {
     try {
-      await db
-        .collection("shops")
-        .doc(shopId)
-        .update({
-          staff: arrayRemove(staffUserId),
-          updatedAt: Timestamp.now(),
-        });
+      const shopRef = doc(db, "shops", shopId);
+      await updateDoc(shopRef, {
+        staff: arrayRemove(staffUserId),
+        updatedAt: Timestamp.now(),
+      });
 
       // Remove shop from staff member's shops array
-      await db
-        .collection("users")
-        .doc(staffUserId)
-        .update({
-          shops: arrayRemove(shopId),
-        });
+      const userRef = doc(db, "users", staffUserId);
+      await updateDoc(userRef, {
+        shops: arrayRemove(shopId),
+      });
 
       console.log(`✅ Removed staff member from shop`);
     } catch (error) {
@@ -221,19 +223,15 @@ export const shopService = {
         throw new Error("Only shop owner can delete shop");
       }
 
-      // Remove shop from customers (optional - can archive instead)
-      // await db.collection("customers").where("shopId", "==", shopId).delete();
-
       // Delete shop document
-      await db.collection("shops").doc(shopId).delete();
+      const shopRef = doc(db, "shops", shopId);
+      await deleteDoc(shopRef);
 
       // Remove shop from user's shops array
-      await db
-        .collection("users")
-        .doc(userId)
-        .update({
-          shops: arrayRemove(shopId),
-        });
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        shops: arrayRemove(shopId),
+      });
 
       console.log(`✅ Deleted shop: ${shopId}`);
     } catch (error) {
@@ -254,8 +252,9 @@ export const shopService = {
 
       const staff: User[] = [];
       for (const staffId of shop.staff) {
-        const userDoc = await db.collection("users").doc(staffId).get();
-        if (userDoc.exists) {
+        const userRef = doc(db, "users", staffId);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
           staff.push({
             id: userDoc.id,
             ...userDoc.data(),
@@ -276,21 +275,22 @@ export const shopService = {
   async getShopStats(shopId: string) {
     try {
       // Count customers
-      const customersSnapshot = await db
-        .collection("customers")
-        .where("shopId", "==", shopId)
-        .get();
+      const customersRef = collection(db, "customers");
+      const qCustomers = query(customersRef, where("shopId", "==", shopId));
+      const customersSnapshot = await getDocs(qCustomers);
       const customerCount = customersSnapshot.size;
 
       // Count transactions this month
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
 
-      const transactionsSnapshot = await db
-        .collection("transactions")
-        .where("shopId", "==", shopId)
-        .where("createdAt", ">=", Timestamp.fromDate(startOfMonth))
-        .get();
+      const transactionsRef = collection(db, "transactions");
+      const qTransactions = query(
+        transactionsRef, 
+        where("shopId", "==", shopId),
+        where("createdAt", ">=", Timestamp.fromDate(startOfMonth))
+      );
+      const transactionsSnapshot = await getDocs(qTransactions);
       const transactionCount = transactionsSnapshot.size;
 
       // Calculate total outstanding
@@ -322,7 +322,8 @@ export const shopService = {
   ): Promise<string> {
     try {
       // Create invitation document
-      const invitationRef = await db.collection("invitations").add({
+      const invitationsRef = collection(db, "invitations");
+      const invitationDoc = await addDoc(invitationsRef, {
         shopId,
         staffPhone,
         staffName,
@@ -334,7 +335,7 @@ export const shopService = {
       });
 
       console.log(`✅ Created invitation for ${staffPhone}`);
-      return invitationRef.id;
+      return invitationDoc.id;
     } catch (error) {
       console.error("Error inviting staff:", error);
       throw error;
@@ -346,12 +347,10 @@ export const shopService = {
    */
   async acceptInvitation(invitationId: string, userId: string): Promise<void> {
     try {
-      const invitationDoc = await db
-        .collection("invitations")
-        .doc(invitationId)
-        .get();
+      const invitationRef = doc(db, "invitations", invitationId);
+      const invitationDoc = await getDoc(invitationRef);
 
-      if (!invitationDoc.exists) {
+      if (!invitationDoc.exists()) {
         throw new Error("Invitation not found");
       }
 
@@ -361,7 +360,7 @@ export const shopService = {
       await this.addStaff(shopId, userId);
 
       // Mark invitation as accepted
-      await db.collection("invitations").doc(invitationId).update({
+      await updateDoc(invitationRef, {
         status: "accepted",
         acceptedAt: Timestamp.now(),
         acceptedBy: userId,

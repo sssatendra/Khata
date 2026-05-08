@@ -1,5 +1,6 @@
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { THEME } from "../../constants/theme";
 
 interface LoadingProps {
   message?: string;
@@ -12,7 +13,7 @@ export const Loading: React.FC<LoadingProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size={size} color="#2563EB" />
+      <ActivityIndicator size={size} color={THEME.primary} />
       {message && <Text style={styles.text}>{message}</Text>}
     </View>
   );
@@ -64,18 +65,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
+    backgroundColor: THEME.background,
   },
   text: {
     marginTop: 12,
     fontSize: 16,
-    color: "#6B7280",
-    fontWeight: "500",
+    color: THEME.textMuted,
+    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
+    backgroundColor: THEME.background,
   },
   emptyIcon: {
     fontSize: 48,
@@ -83,21 +86,23 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#1F2937",
+    fontWeight: "700",
+    color: THEME.textMain,
     marginBottom: 8,
     textAlign: "center",
   },
   emptySubtitle: {
     fontSize: 14,
-    color: "#6B7280",
+    color: THEME.textMuted,
     textAlign: "center",
+    fontWeight: "500",
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
+    backgroundColor: THEME.background,
   },
   errorIcon: {
     fontSize: 48,
@@ -105,14 +110,15 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#DC2626",
+    fontWeight: "700",
+    color: THEME.danger,
     marginBottom: 8,
     textAlign: "center",
   },
   errorMessage: {
     fontSize: 14,
-    color: "#6B7280",
+    color: THEME.textMuted,
     textAlign: "center",
+    fontWeight: "500",
   },
 });

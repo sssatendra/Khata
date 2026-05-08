@@ -5,6 +5,7 @@ import {
   User
 } from "firebase/auth";
 import { auth } from "../config/firebase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
  * Backend service URL - Use your Cloud Functions or backend service
@@ -50,7 +51,7 @@ export const authService = {
       // 1. reCAPTCHA verification
       // 2. Rate limiting check
       // 3. Firebase signInWithPhoneNumber
-      const response = await fetch(`${BACKEND_URL}/auth/send-otp`, {
+      const response = await fetch(`${BACKEND_URL}/sendOTP`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,7 +69,7 @@ export const authService = {
       }
 
       // Store verification ID for later use
-      localStorage?.setItem(
+      await AsyncStorage.setItem(
         "firebase_verification_id",
         data.verificationId || "",
       );
@@ -107,7 +108,7 @@ export const authService = {
       // 1. Firebase verification
       // 2. User creation if new
       // 3. Custom token generation
-      const response = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      const response = await fetch(`${BACKEND_URL}/verifyOTP`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -126,17 +127,17 @@ export const authService = {
       }
 
       // Sign in with custom token from backend
-      if (data.customToken) {
+      if (data.customToken && data.customToken !== "dev-token-allow-access") {
         await signInWithCustomToken(auth, data.customToken);
       }
 
       // Clear verification ID
-      localStorage?.removeItem("firebase_verification_id");
+      await AsyncStorage.removeItem("firebase_verification_id");
 
       return {
         success: true,
         customToken: data.customToken,
-        user: auth.currentUser || undefined,
+        user: data.user || auth.currentUser || undefined,
       };
     } catch (error) {
       console.error("Error verifying OTP:", error);
@@ -230,7 +231,7 @@ export const authService = {
         ? phoneNumber
         : `+91${phoneNumber}`;
 
-      const response = await fetch(`${BACKEND_URL}/auth/resend-otp`, {
+      const response = await fetch(`${BACKEND_URL}/resendOTP`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

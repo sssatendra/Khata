@@ -1,43 +1,58 @@
 import React, { useState } from "react";
 import {
-    Alert,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Button } from "@/components/ui/Button";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { THEME } from "@/constants/theme";
+import { NeumorphicCard } from "@/components/ui/NeumorphicCard";
+import { NeumorphicButton } from "@/components/ui/NeumorphicButton";
+import { NeumorphicInput } from "@/components/ui/NeumorphicInput";
 import { transactionService } from "@/services/firestore";
 import { useAuthStore } from "@/store/authStore";
 import { useDataStore } from "@/store/dataStore";
 import { Customer, TransactionType } from "@/types";
-import { formatCurrency } from "@/utils/helpers";
+import { formatCurrency, formatSimpleDate } from "@/utils/helpers";
 
 interface TransactionScreenProps {
   customer: Customer;
   onSuccess: () => void;
+  onBack?: () => void;
 }
 
 export const TransactionScreen: React.FC<TransactionScreenProps> = ({
   customer,
   onSuccess,
+  onBack,
 }) => {
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { addTransactionToStore, updateCustomerInStore } = useDataStore();
   const [transactionType, setTransactionType] =
     useState<TransactionType>("credit");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showTypeModal, setShowTypeModal] = useState(false);
 
   const handleAmountChange = (text: string) => {
     setAmount(text.replace(/[^0-9]/g, ""));
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
   };
 
   const handleSubmit = async () => {
@@ -72,7 +87,7 @@ export const TransactionScreen: React.FC<TransactionScreenProps> = ({
       const updatedCustomer: Customer = {
         ...customer,
         balance: newBalance,
-        lastTransactionDate: new Date(),
+        lastTransactionDate: date,
         updatedAt: new Date(),
       };
 
@@ -86,7 +101,7 @@ export const TransactionScreen: React.FC<TransactionScreenProps> = ({
         type: transactionType,
         amount: txnAmount,
         note: note || undefined,
-        createdAt: new Date(),
+        createdAt: date,
         updatedAt: new Date(),
       });
 
@@ -110,136 +125,174 @@ export const TransactionScreen: React.FC<TransactionScreenProps> = ({
   };
 
   const getTypeColor = (type: TransactionType) => {
-    return type === "credit" ? "#DC2626" : "#10B981";
+    return type === "credit" ? THEME.danger : THEME.success;
   };
 
   const getTypeIcon = (type: TransactionType) => {
-    return type === "credit" ? "➕" : "➖";
+    return type === "credit" ? "↑" : "↓";
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Add Transaction</Text>
-          <Text style={styles.subtitle}>for {customer.name}</Text>
+          {onBack && (
+            <TouchableOpacity onPress={onBack} style={styles.backButton}>
+              <Text style={styles.backText}>← Back</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.title}>New Record</Text>
+          <Text style={styles.subtitle}>Adding ledger for {customer.name}</Text>
         </View>
 
         {/* Customer Info Card */}
-        <View style={styles.customerCard}>
-          <Text style={styles.customerName}>{customer.name}</Text>
-          <Text style={styles.currentBalance}>
-            Current Balance:{" "}
-            <Text style={styles.balance}>
-              {formatCurrency(customer.balance)}
-            </Text>
+        <NeumorphicCard borderRadius={20} style={styles.customerCard} contentStyle={styles.customerCardContent}>
+          <View style={styles.customerHeader}>
+            <Text style={styles.customerName}>{customer.name}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: customer.balance > 0 ? THEME.danger + "20" : THEME.success + "20" }]}>
+              <Text style={[styles.statusText, { color: customer.balance > 0 ? THEME.danger : THEME.success }]}>
+                {customer.balance > 0 ? "OWES YOU" : "SETTLED"}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.balanceLabel}>Current Debt</Text>
+          <Text style={[styles.balanceValue, { color: customer.balance > 0 ? THEME.danger : THEME.success }]}>
+            {formatCurrency(Math.abs(customer.balance))}
           </Text>
-        </View>
+        </NeumorphicCard>
 
         {/* Form */}
         <View style={styles.form}>
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+          {error ? (
+            <NeumorphicCard style={styles.errorBox} borderRadius={12} contentStyle={{ padding: 12 }}>
+              <Text style={styles.errorText}>⚠️ {error}</Text>
+            </NeumorphicCard>
+          ) : null}
 
           {/* Transaction Type */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Transaction Type</Text>
+            <Text style={styles.label}>TRANSACTION TYPE</Text>
             <TouchableOpacity
-              style={styles.typeSelector}
+              activeOpacity={0.8}
               onPress={() => setShowTypeModal(true)}
             >
-              <View
-                style={[
-                  styles.typeButton,
-                  { backgroundColor: getTypeColor(transactionType) },
-                ]}
-              >
-                <Text style={styles.typeIcon}>
-                  {getTypeIcon(transactionType)}
-                </Text>
-              </View>
-              <View style={styles.typeInfo}>
-                <Text style={styles.typeLabel}>
-                  {transactionType === "credit"
-                    ? "Udhar (Purchase)"
-                    : "Payment"}
-                </Text>
-                <Text style={styles.typeDescription}>
-                  {transactionType === "credit"
-                    ? "Customer owes you money"
-                    : "Customer paid you money"}
-                </Text>
-              </View>
+              <NeumorphicCard borderRadius={16} style={styles.typeSelector} contentStyle={styles.typeSelectorContent}>
+                <View
+                  style={[
+                    styles.typeButton,
+                    { backgroundColor: getTypeColor(transactionType) + "20" },
+                  ]}
+                >
+                  <Text style={[styles.typeIcon, { color: getTypeColor(transactionType) }]}>
+                    {getTypeIcon(transactionType)}
+                  </Text>
+                </View>
+                <View style={styles.typeInfo}>
+                  <Text style={styles.typeLabel}>
+                    {transactionType === "credit"
+                      ? "Give Credit (Udhar)"
+                      : "Receive Payment"}
+                  </Text>
+                  <Text style={styles.typeDescription}>
+                    {transactionType === "credit"
+                      ? "Customer purchased items on debt"
+                      : "Customer cleared their existing debt"}
+                  </Text>
+                </View>
+                <Text style={styles.chevron}>↓</Text>
+              </NeumorphicCard>
             </TouchableOpacity>
           </View>
 
           {/* Amount */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Amount *</Text>
-            <View style={styles.amountWrapper}>
-              <Text style={styles.currencySymbol}>₹</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="0"
-                keyboardType="number-pad"
-                value={amount}
-                onChangeText={handleAmountChange}
+            <Text style={styles.label}>ENTER AMOUNT</Text>
+            <NeumorphicInput
+              placeholder="₹ 0"
+              keyboardType="number-pad"
+              value={amount}
+              onChangeText={handleAmountChange}
+              style={styles.amountInput}
+            />
+          </View>
+
+          {/* Transaction Date */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>TRANSACTION DATE</Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <NeumorphicCard borderRadius={16} style={styles.dateSelector} contentStyle={styles.dateSelectorContent}>
+                <Text style={styles.dateIcon}>📅</Text>
+                <Text style={styles.dateText}>{formatSimpleDate(date)}</Text>
+                <Text style={styles.dateHint}>Tap to change</Text>
+              </NeumorphicCard>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display="default"
+                onChange={onDateChange}
+                maximumDate={new Date()}
               />
-            </View>
-            {amount && (
-              <Text style={styles.amountPreview}>
-                {formatCurrency(parseFloat(amount))}
-              </Text>
             )}
           </View>
 
           {/* Note */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Note (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.multiline]}
-              placeholder="e.g., Purchased rice, dal, flour"
+            <Text style={styles.label}>NOTES (OPTIONAL)</Text>
+            <NeumorphicInput
+              placeholder="Items purchased or payment mode..."
               multiline
               numberOfLines={3}
               value={note}
               onChangeText={setNote}
+              style={styles.multiline}
             />
           </View>
 
           {/* Preview */}
-          <View style={styles.previewBox}>
-            <Text style={styles.previewLabel}>After this transaction:</Text>
-            <Text style={styles.previewValue}>
-              Balance will be:{" "}
-              <Text
-                style={{
-                  color: transactionType === "credit" ? "#DC2626" : "#10B981",
-                }}
-              >
-                {formatCurrency(
-                  transactionType === "credit"
-                    ? customer.balance + parseFloat(amount || "0")
-                    : customer.balance - parseFloat(amount || "0"),
-                )}
+          <NeumorphicCard borderRadius={16} style={styles.previewBox} contentStyle={styles.previewContent}>
+            <Text style={styles.previewLabel}>NEW ESTIMATED BALANCE</Text>
+            <Text
+              style={[styles.previewValue, {
+                color: (transactionType === "credit" 
+                  ? customer.balance + parseFloat(amount || "0")
+                  : customer.balance - parseFloat(amount || "0")) > 0 
+                  ? THEME.danger 
+                  : THEME.success,
+              }]}
+            >
+              {formatCurrency(
+                Math.abs(transactionType === "credit"
+                  ? customer.balance + parseFloat(amount || "0")
+                  : customer.balance - parseFloat(amount || "0")),
+              )}
+              <Text style={styles.previewSub}>
+                {(transactionType === "credit" 
+                  ? customer.balance + parseFloat(amount || "0")
+                  : customer.balance - parseFloat(amount || "0")) > 0 
+                  ? " (Owed)" 
+                  : " (Advance)"}
               </Text>
             </Text>
-          </View>
+          </NeumorphicCard>
         </View>
 
         {/* Button */}
         <View style={styles.buttonContainer}>
-          <Button
-            title="Add Transaction"
+          <NeumorphicButton
+            title="CONFIRM TRANSACTION"
             onPress={handleSubmit}
             disabled={!amount || parseFloat(amount) <= 0}
-            size="large"
+            loading={loading}
+            variant="primary"
           />
         </View>
       </ScrollView>
@@ -248,65 +301,76 @@ export const TransactionScreen: React.FC<TransactionScreenProps> = ({
       <Modal
         visible={showTypeModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowTypeModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Transaction Type</Text>
+          <NeumorphicCard borderRadius={24} style={styles.modalContent} contentStyle={styles.modalInner}>
+            <Text style={styles.modalTitle}>Select Action</Text>
 
             <TouchableOpacity
-              style={[
-                styles.typeOption,
-                transactionType === "credit" && styles.typeOptionSelected,
-              ]}
+              activeOpacity={0.7}
               onPress={() => {
                 setTransactionType("credit");
                 setShowTypeModal(false);
               }}
+              style={styles.optionWrapper}
             >
-              <Text style={styles.typeOptionIcon}>➕</Text>
-              <View style={styles.typeOptionInfo}>
-                <Text style={styles.typeOptionTitle}>Udhar (Credit)</Text>
-                <Text style={styles.typeOptionDesc}>
-                  Customer purchased on credit
-                </Text>
-              </View>
+              <NeumorphicCard
+                borderRadius={16}
+                style={[styles.typeOption, transactionType === "credit" && styles.activeOption]}
+                contentStyle={styles.optionContent}
+              >
+                <View style={[styles.optionIconBox, { backgroundColor: THEME.danger + "20" }]}>
+                  <Text style={[styles.typeOptionIcon, { color: THEME.danger }]}>↑</Text>
+                </View>
+                <View style={styles.typeOptionInfo}>
+                  <Text style={styles.typeOptionTitle}>Give Credit</Text>
+                  <Text style={styles.typeOptionDesc}>Add to customer's debt</Text>
+                </View>
+              </NeumorphicCard>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.typeOption,
-                transactionType === "debit" && styles.typeOptionSelected,
-              ]}
+              activeOpacity={0.7}
               onPress={() => {
                 setTransactionType("debit");
                 setShowTypeModal(false);
               }}
+              style={styles.optionWrapper}
             >
-              <Text style={styles.typeOptionIcon}>➖</Text>
-              <View style={styles.typeOptionInfo}>
-                <Text style={styles.typeOptionTitle}>Payment (Debit)</Text>
-                <Text style={styles.typeOptionDesc}>Customer paid you</Text>
-              </View>
+              <NeumorphicCard
+                borderRadius={16}
+                style={[styles.typeOption, transactionType === "debit" && styles.activeOption]}
+                contentStyle={styles.optionContent}
+              >
+                <View style={[styles.optionIconBox, { backgroundColor: THEME.success + "20" }]}>
+                  <Text style={[styles.typeOptionIcon, { color: THEME.success }]}>↓</Text>
+                </View>
+                <View style={styles.typeOptionInfo}>
+                  <Text style={styles.typeOptionTitle}>Receive Payment</Text>
+                  <Text style={styles.typeOptionDesc}>Clear customer's debt</Text>
+                </View>
+              </NeumorphicCard>
             </TouchableOpacity>
 
-            <Button
-              title="Close"
+            <TouchableOpacity 
               onPress={() => setShowTypeModal(false)}
-              variant="secondary"
-            />
-          </View>
+              style={styles.closeModal}
+            >
+              <Text style={styles.closeModalText}>CANCEL</Text>
+            </TouchableOpacity>
+          </NeumorphicCard>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: THEME.background,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -314,210 +378,264 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 24,
+    paddingLeft: 4,
+  },
+  backButton: {
+    marginBottom: 16,
+    marginLeft: -4,
+    padding: 8,
+  },
+  backText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: THEME.primary,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 8,
+    fontSize: 32,
+    fontWeight: "900",
+    color: THEME.textMain,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: 15,
+    color: THEME.textMuted,
+    fontWeight: "600",
   },
   customerCard: {
-    backgroundColor: "#DBEAFE",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: "#2563EB",
+    marginBottom: 32,
   },
-  customerName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1E40AF",
-    marginBottom: 8,
-  },
-  currentBalance: {
-    fontSize: 14,
-    color: "#1E40AF",
-  },
-  balance: {
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  form: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+  customerCardContent: {
     padding: 20,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    marginBottom: 24,
   },
-  errorBox: {
-    backgroundColor: "#FEE2E2",
-    borderLeftWidth: 4,
-    borderLeftColor: "#DC2626",
-    borderRadius: 8,
-    padding: 12,
+  customerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
+  customerName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: THEME.textMain,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  balanceLabel: {
+    fontSize: 12,
+    color: THEME.textMuted,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  balanceValue: {
+    fontSize: 32,
+    fontWeight: "900",
+    marginTop: 4,
+  },
+  form: {
+    marginBottom: 32,
+  },
+  errorBox: {
+    marginBottom: 20,
+    borderColor: THEME.danger + "40",
+    borderWidth: 1,
+  },
   errorText: {
-    color: "#991B1B",
+    color: THEME.danger,
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "700",
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 10,
+    fontSize: 11,
+    fontWeight: "800",
+    color: THEME.textMuted,
+    marginBottom: 12,
+    marginLeft: 6,
+    letterSpacing: 1.5,
   },
   typeSelector: {
+    borderColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+  },
+  typeSelectorContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    padding: 12,
+    padding: 16,
   },
   typeButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
+    marginRight: 16,
   },
   typeIcon: {
     fontSize: 24,
+    fontWeight: "900",
   },
   typeInfo: {
     flex: 1,
   },
   typeLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
+    fontSize: 16,
+    fontWeight: "800",
+    color: THEME.textMain,
   },
   typeDescription: {
     fontSize: 12,
-    color: "#6B7280",
+    color: THEME.textMuted,
     marginTop: 2,
-  },
-  amountWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-  },
-  currencySymbol: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginRight: 4,
-  },
-  amountInput: {
-    flex: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  amountPreview: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 8,
-  },
-  input: {
-    backgroundColor: "#F3F4F6",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#1F2937",
-  },
-  multiline: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  previewBox: {
-    backgroundColor: "#F0FDF4",
-    borderRadius: 8,
-    padding: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#10B981",
-  },
-  previewLabel: {
-    fontSize: 12,
-    color: "#15803D",
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  previewValue: {
-    fontSize: 16,
-    color: "#15803D",
     fontWeight: "600",
   },
+  chevron: {
+    fontSize: 16,
+    color: THEME.textMuted,
+    fontWeight: "900",
+  },
+  amountInput: {
+    fontSize: 36,
+    fontWeight: "900",
+    height: 80,
+    color: THEME.primary,
+  },
+  dateSelector: {
+    borderColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+  },
+  dateSelectorContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  dateIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  dateText: {
+    fontSize: 16,
+    color: THEME.textMain,
+    fontWeight: "800",
+  },
+  dateHint: {
+    fontSize: 13,
+    color: THEME.textMuted,
+    flex: 1,
+    textAlign: "right",
+    fontWeight: "600",
+  },
+  multiline: {
+    minHeight: 100,
+  },
+  previewBox: {
+    marginTop: 8,
+    backgroundColor: THEME.surface + "40",
+  },
+  previewContent: {
+    padding: 16,
+  },
+  previewLabel: {
+    fontSize: 10,
+    color: THEME.textMuted,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  previewValue: {
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  previewSub: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: THEME.textMuted,
+  },
   buttonContainer: {
-    marginBottom: 24,
+    marginBottom: 40,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 30,
+    width: "100%",
+    maxWidth: 400,
+  },
+  modalInner: {
+    padding: 24,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 20,
+    fontSize: 20,
+    fontWeight: "900",
+    color: THEME.textMain,
+    marginBottom: 24,
+    textAlign: "center",
+    letterSpacing: 1,
+  },
+  optionWrapper: {
+    marginBottom: 16,
   },
   typeOption: {
+    borderColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+  },
+  activeOption: {
+    borderColor: THEME.primary + "40",
+    backgroundColor: THEME.primary + "05",
+  },
+  optionContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
     padding: 16,
-    borderRadius: 12,
-    backgroundColor: "#F9FAFB",
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "transparent",
   },
-  typeOptionSelected: {
-    backgroundColor: "#DBEAFE",
-    borderColor: "#2563EB",
+  optionIconBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
   },
   typeOptionIcon: {
-    fontSize: 28,
+    fontSize: 26,
+    fontWeight: "900",
   },
   typeOptionInfo: {
     flex: 1,
   },
   typeOptionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
+    fontSize: 17,
+    fontWeight: "800",
+    color: THEME.textMain,
   },
   typeOptionDesc: {
-    fontSize: 12,
-    color: "#6B7280",
+    fontSize: 13,
+    color: THEME.textMuted,
     marginTop: 2,
+    fontWeight: "600",
+  },
+  closeModal: {
+    marginTop: 12,
+    alignItems: "center",
+    padding: 12,
+  },
+  closeModalText: {
+    fontSize: 13,
+    color: THEME.textMuted,
+    fontWeight: "800",
+    letterSpacing: 2,
   },
 });

@@ -1,23 +1,26 @@
 import React, { useMemo, useState } from "react";
 import {
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { THEME } from "@/constants/theme";
+import { NeumorphicCard } from "@/components/ui/NeumorphicCard";
+import { NeumorphicButton } from "@/components/ui/NeumorphicButton";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { EmptyState, Loading } from "@/components/ui/StateIndicators";
-import {
-    useCustomerData,
-    useCustomerSearch,
-    useDashboardStats,
-} from "@/hooks/useData";
 import { useAuthStore } from "@/store/authStore";
 import { useDataStore } from "@/store/dataStore";
-import { Customer } from "@/types";
+import {
+  useCustomerData,
+  useCustomerSearch,
+  useDashboardStats,
+} from "@/hooks/useData";
 import { formatCurrency } from "@/utils/helpers";
+import { Customer } from "@/types";
 
 interface DashboardScreenProps {
   onNavigateToCustomers: () => void;
@@ -30,8 +33,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onNavigateToAddCustomer,
   onNavigateToCustomerDetail,
 }) => {
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { stats } = useDataStore();
   const { stats: dashboardStats, loading: statsLoading } = useDashboardStats(
     user?.shopId || "",
   );
@@ -57,22 +60,26 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const getRiskColor = (level: "low" | "medium" | "high") => {
     switch (level) {
       case "high":
-        return "#DC2626";
+        return THEME.danger;
       case "medium":
-        return "#F59E0B";
+        return THEME.warning;
       case "low":
-        return "#10B981";
+        return THEME.success;
+      default:
+        return THEME.textMuted;
     }
   };
 
   const getRiskIcon = (level: "low" | "medium" | "high") => {
     switch (level) {
       case "high":
-        return "🔴";
+        return "⚠️";
       case "medium":
-        return "🟠";
+        return "⌛";
       case "low":
-        return "🟢";
+        return "✅";
+      default:
+        return "•";
     }
   };
 
@@ -81,131 +88,142 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <FlatList
         data={filteredCustomers}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          <>
+          <View style={{ paddingTop: insets.top }}>
             {/* Header */}
             <View style={styles.header}>
               <View>
-                <Text style={styles.greeting}>Welcome back,</Text>
-                <Text style={styles.userName}>{user?.name}</Text>
+                <Text style={styles.greeting}>Good Morning,</Text>
+                <Text style={styles.userName}>{user?.name || "Store Owner"}</Text>
               </View>
-              <TouchableOpacity style={styles.avatarButton}>
+              <NeumorphicCard borderRadius={32} style={styles.avatarCard} contentStyle={styles.avatarContent}>
                 <Text style={styles.avatar}>👤</Text>
-              </TouchableOpacity>
+              </NeumorphicCard>
             </View>
 
-            {/* Stats Cards */}
+            {/* Stats Overview */}
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Total Outstanding</Text>
+              <NeumorphicCard borderRadius={20} style={styles.statCard}>
+                <Text style={styles.statLabel}>OUTSTANDING DUES</Text>
                 <Text style={styles.statValue}>
                   {formatCurrency(dashboardStats?.totalOutstanding || 0)}
                 </Text>
                 <Text style={styles.statSubtext}>
                   from {dashboardStats?.totalCustomers || 0} customers
                 </Text>
-              </View>
+              </NeumorphicCard>
 
-              <View style={[styles.statCard, styles.riskCard]}>
-                <Text style={styles.riskLabel}>🔴 High Risk</Text>
-                <Text style={styles.riskValue}>
-                  {dashboardStats?.highRiskCount || 0}
-                </Text>
-                <Text style={styles.statSubtext}>requires attention</Text>
-              </View>
+              <NeumorphicCard borderRadius={20} style={styles.statCard} contentStyle={styles.riskCardContent}>
+                <View style={styles.riskAccent} />
+                <View>
+                  <Text style={[styles.statLabel, { color: THEME.danger }]}>HIGH RISK</Text>
+                  <Text style={styles.riskValue}>
+                    {dashboardStats?.highRiskCount || 0}
+                  </Text>
+                  <Text style={styles.statSubtext}>require follow-up</Text>
+                </View>
+              </NeumorphicCard>
             </View>
 
             {/* Quick Actions */}
             <View style={styles.quickActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onNavigateToAddCustomer}
-              >
-                <Text style={styles.actionIcon}>➕</Text>
-                <Text style={styles.actionText}>Add Customer</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onNavigateToCustomers}
-              >
-                <Text style={styles.actionIcon}>📋</Text>
-                <Text style={styles.actionText}>All Customers</Text>
-              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <NeumorphicButton
+                  title="+ New Customer"
+                  onPress={onNavigateToAddCustomer}
+                  variant="primary"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <NeumorphicButton
+                  title="All Customers"
+                  onPress={onNavigateToCustomers}
+                  variant="secondary"
+                />
+              </View>
             </View>
 
-            {/* Search & Filter */}
-            <SearchBar onSearch={handleSearch} />
+            {/* Search */}
+            <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+              <SearchBar onSearch={handleSearch} />
+            </View>
 
             {/* Filter Tabs */}
             <View style={styles.filterTabs}>
               {(["all", "high", "medium", "low"] as const).map((level) => (
                 <TouchableOpacity
                   key={level}
-                  style={[
-                    styles.filterTab,
-                    filterRiskLevel === level && styles.filterTabActive,
-                  ]}
                   onPress={() => setFilterRiskLevel(level)}
+                  style={{ flex: 1 }}
                 >
-                  <Text
+                  <View
                     style={[
-                      styles.filterTabText,
-                      filterRiskLevel === level && styles.filterTabTextActive,
+                      styles.filterTab,
+                      filterRiskLevel === level && styles.filterTabActive,
                     ]}
                   >
-                    {level === "all"
-                      ? "All"
-                      : level.charAt(0).toUpperCase() + level.slice(1)}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.filterTabText,
+                        filterRiskLevel === level && styles.filterTabTextActive,
+                      ]}
+                    >
+                      {level === "all"
+                        ? "All"
+                        : level.charAt(0).toUpperCase() + level.slice(1)}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
 
             {filteredCustomers.length > 0 && (
               <Text style={styles.listTitle}>
-                Top Debtors ({filteredCustomers.length})
+                TOP DEBTORS
               </Text>
             )}
-          </>
+          </View>
         }
         renderItem={({ item: customer }) => (
           <TouchableOpacity
-            style={styles.customerItem}
+            activeOpacity={0.7}
             onPress={() => onNavigateToCustomerDetail(customer)}
           >
-            <View style={styles.customerInfo}>
-              <View style={styles.customerHeader}>
-                <Text style={styles.customerName}>{customer.name}</Text>
-                <View
+            <NeumorphicCard style={styles.customerItem} borderRadius={16}>
+              <View style={styles.customerInfo}>
+                <View style={styles.customerHeader}>
+                  <Text style={styles.customerName}>{customer.name}</Text>
+                  <View
+                    style={[
+                      styles.riskBadge,
+                      { backgroundColor: getRiskColor(getRiskLevel(customer)) + "20" },
+                    ]}
+                  >
+                    <Text style={[styles.badgeText, { color: getRiskColor(getRiskLevel(customer)) }]}>
+                      {getRiskIcon(getRiskLevel(customer))} {getRiskLevel(customer).toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.customerPhone}>{customer.phone}</Text>
+              </View>
+
+              <View style={styles.customerBalance}>
+                <Text style={styles.balanceLabel}>BALANCE</Text>
+                <Text
                   style={[
-                    styles.riskBadge,
-                    { backgroundColor: getRiskColor(getRiskLevel(customer)) },
+                    styles.balanceAmount,
+                    { color: customer.balance > 0 ? THEME.danger : THEME.success },
                   ]}
                 >
-                  <Text style={styles.badgeText}>
-                    {getRiskIcon(getRiskLevel(customer))}
-                  </Text>
-                </View>
+                  {formatCurrency(customer.balance)}
+                </Text>
               </View>
-              <Text style={styles.customerPhone}>{customer.phone}</Text>
-            </View>
-
-            <View style={styles.customerBalance}>
-              <Text style={styles.balanceLabel}>Balance</Text>
-              <Text
-                style={[
-                  styles.balanceAmount,
-                  { color: customer.balance > 0 ? "#DC2626" : "#10B981" },
-                ]}
-              >
-                {formatCurrency(customer.balance)}
-              </Text>
-            </View>
+            </NeumorphicCard>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
@@ -215,89 +233,82 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             subtitle="Add your first customer to get started"
           />
         }
-        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: THEME.background,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   greeting: {
     fontSize: 14,
-    color: "#6B7280",
+    color: THEME.textMuted,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
   },
   userName: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
+    fontSize: 28,
+    fontWeight: "900",
+    color: THEME.textMain,
+    marginTop: 4,
   },
-  avatarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+  avatarCard: {
+    width: 56,
+    height: 56,
+  },
+  avatarContent: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 0,
   },
   avatar: {
-    fontSize: 20,
+    fontSize: 24,
   },
   statsGrid: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     gap: 12,
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  riskCard: {
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FEE2E2",
   },
   statLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "500",
-    marginBottom: 8,
-  },
-  riskLabel: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 10,
+    color: THEME.textMuted,
+    fontWeight: "800",
+    letterSpacing: 1,
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1F2937",
+    fontSize: 22,
+    fontWeight: "900",
+    color: THEME.primary,
     marginBottom: 4,
   },
   riskValue: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#DC2626",
+    fontSize: 22,
+    fontWeight: "900",
+    color: THEME.danger,
     marginBottom: 4,
   },
   statSubtext: {
-    fontSize: 12,
-    color: "#9CA3AF",
+    fontSize: 11,
+    color: THEME.textMuted,
+    fontWeight: "500",
   },
   quickActions: {
     flexDirection: "row",
@@ -305,70 +316,51 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
   },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#2563EB",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  actionIcon: {
-    fontSize: 18,
-  },
-  actionText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 14,
-  },
   filterTabs: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     gap: 8,
   },
   filterTab: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#E5E7EB",
+    paddingVertical: 10,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   filterTabActive: {
-    backgroundColor: "#2563EB",
+    backgroundColor: THEME.primary + "15",
+    borderColor: THEME.primary + "60",
+    borderWidth: 1,
   },
   filterTabText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#6B7280",
+    fontWeight: "700",
+    color: THEME.textMuted,
+    letterSpacing: 0.5,
   },
   filterTabTextActive: {
-    color: "#FFFFFF",
+    color: THEME.primary,
+    fontWeight: "900",
   },
   listTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6B7280",
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    fontSize: 12,
+    fontWeight: "800",
+    color: THEME.textMuted,
+    paddingHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 12,
+    letterSpacing: 1.5,
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   customerItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
     marginVertical: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
   },
   customerInfo: {
     flex: 1,
@@ -376,40 +368,62 @@ const styles = StyleSheet.create({
   customerHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
+    justifyContent: "space-between",
+    marginBottom: 6,
   },
   customerName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
+    fontSize: 17,
+    fontWeight: "700",
+    color: THEME.textMain,
     flex: 1,
   },
   riskBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
   badgeText: {
-    fontSize: 14,
+    fontSize: 10,
+    fontWeight: "800",
   },
   customerPhone: {
-    fontSize: 12,
-    color: "#6B7280",
+    fontSize: 14,
+    color: THEME.textMuted,
+    fontWeight: "500",
   },
   customerBalance: {
-    alignItems: "flex-end",
-    minWidth: 80,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.05)",
   },
   balanceLabel: {
-    fontSize: 11,
-    color: "#9CA3AF",
-    marginBottom: 2,
+    fontSize: 10,
+    color: THEME.textMuted,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
   balanceAmount: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  riskCardContent: {
+    paddingLeft: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  riskAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: THEME.danger,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
   },
 });

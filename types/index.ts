@@ -15,7 +15,9 @@ export interface User {
 export interface Shop {
   id: string;
   name: string;
+  ownerUid: string;
   ownerPhone: string;
+  staff: string[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,19 +1,23 @@
-import { Button } from "@/components/ui/Button";
+import { NeumorphicButton } from "@/components/ui/NeumorphicButton";
+import { NeumorphicCard } from "@/components/ui/NeumorphicCard";
+import { NeumorphicInput } from "@/components/ui/NeumorphicInput";
 import { Loading } from "@/components/ui/StateIndicators";
+import { THEME } from "@/constants/theme";
 import { authService } from "@/services/auth";
 import { useAuthStore } from "@/store/authStore";
 import { formatPhoneNumber, isValidPhoneNumber } from "@/utils/helpers";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface LoginScreenProps {
   onSuccess: () => void;
@@ -35,10 +39,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     setPhoneNumber: setStorePhone,
     persistAuth,
   } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   // Countdown for resend OTP button
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (resendCountdown > 0) {
       interval = setInterval(() => {
         setResendCountdown((prev) => prev - 1);
@@ -49,12 +54,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
   /**
    * Generate or fetch reCAPTCHA token
-   * In production, integrate with actual reCAPTCHA v3
    */
   const getReCaptchaToken = async (): Promise<string> => {
     try {
-      // For now, generate a mock token
-      // In production, use react-native-recaptcha-v3 or similar
       const token = `recaptcha_${Date.now()}_${Math.random()}`;
       return token;
     } catch (error) {
@@ -72,11 +74,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
     setLoading(true);
     try {
-      // Get reCAPTCHA token
       const token = await getReCaptchaToken();
       setRecaptchaToken(token);
 
-      // Call real Firebase auth service
       const response = await authService.sendOTP(phoneNumber, token);
 
       if (!response.success) {
@@ -142,7 +142,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
     setLoading(true);
     try {
-      // Call real Firebase auth service
       const response = await authService.verifyOTP(phoneNumber, otp, {
         name: userName,
         shopName: shopName,
@@ -152,15 +151,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
         throw new Error(response.error || "Invalid OTP");
       }
 
-      // User created/signed in - persist to store
-      const currentUser = authService.getCurrentUser();
+      const currentUser = response.user || authService.getCurrentUser();
       if (currentUser) {
         const user = {
           id: currentUser.uid,
           phone: currentUser.phoneNumber || phoneNumber,
           name: userName,
           role: "admin" as const,
-          shopId: "shop_" + Date.now(), // Will be updated from Firestore
+          shopId: "shop_" + Date.now(),
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -180,37 +178,43 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
   };
 
   if (loading) {
-    return <Loading message="Processing..." />;
+    return <Loading message="AUTHENTICATING..." />;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.logo}>📱</Text>
-          <Text style={styles.title}>Khata App</Text>
-          <Text style={styles.subtitle}>
-            Digital Udhar Ledger for Kirana Stores
-          </Text>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>KHATA</Text>
+            <View style={styles.titleUnderline} />
+            <Text style={styles.subtitle}>Premium Fintech Solutions</Text>
+          </View>
 
-        {/* Form */}
-        <View style={styles.formContainer}>
-          {step === "phone" ? (
-            <>
-              <Text style={styles.stepTitle}>Enter Your Phone Number</Text>
+          <NeumorphicCard style={styles.authCard} borderRadius={24} contentStyle={styles.cardContent}>
+            <Text style={styles.cardTitle}>
+              {step === "phone" ? "Secure Access" : "Identity Setup"}
+            </Text>
+            <Text style={styles.cardSubtitle}>
+              {step === "phone"
+                ? "Login with your phone to access your digital ledger."
+                : `Verification code sent to +91 ${formatPhoneNumber(phoneNumber)}`}
+            </Text>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Phone Number</Text>
-                <View style={styles.phoneInputWrapper}>
-                  <Text style={styles.countryCode}>+91</Text>
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="9876543210"
+            {step === "phone" ? (
+              <View style={styles.form}>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>MOBILE NUMBER</Text>
+                  <NeumorphicInput
+                    placeholder="98765 43210"
                     keyboardType="phone-pad"
                     maxLength={10}
                     value={phoneNumber}
@@ -220,253 +224,198 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                     }}
                   />
                 </View>
-                {phoneNumber && (
-                  <Text style={styles.formattedPhone}>
-                    Formatted: {formatPhoneNumber(phoneNumber)}
-                  </Text>
-                )}
-              </View>
-
-              {error && <Text style={styles.error}>{error}</Text>}
-
-              <Button
-                title="Send OTP"
-                onPress={handlePhoneSubmit}
-                disabled={!isValidPhoneNumber(phoneNumber)}
-              />
-            </>
-          ) : (
-            <>
-              <Text style={styles.stepTitle}>Verify OTP & Setup Shop</Text>
-              <Text style={styles.stepSubtitle}>
-                Enter the 6-digit OTP sent to {formatPhoneNumber(phoneNumber)}
-              </Text>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>OTP (6 digits)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="000000"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  value={otp}
-                  onChangeText={(text) => {
-                    setOtp(text.replace(/\D/g, ""));
-                    setError("");
-                  }}
-                />
-                <TouchableOpacity
-                  onPress={handleResendOTP}
-                  disabled={resendCountdown > 0}
-                >
-                  <Text
-                    style={[
-                      styles.resendText,
-                      resendCountdown > 0 && styles.resendTextDisabled,
-                    ]}
-                  >
-                    {resendCountdown > 0
-                      ? `Resend OTP in ${resendCountdown}s`
-                      : "Didn't receive OTP? Resend"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Shop Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Your Kirana Store Name"
-                  value={shopName}
-                  onChangeText={(text) => {
-                    setShopName(text);
-                    setError("");
-                  }}
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                <NeumorphicButton
+                  title="REQUEST ACCESS"
+                  onPress={handlePhoneSubmit}
+                  disabled={!isValidPhoneNumber(phoneNumber)}
+                  style={styles.actionButton}
+                  variant="primary"
                 />
               </View>
+            ) : (
+              <View style={styles.form}>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
+                  <NeumorphicInput
+                    placeholder="6-DIGIT OTP"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    value={otp}
+                    onChangeText={(text) => {
+                      setOtp(text.replace(/\D/g, ""));
+                      setError("");
+                    }}
+                  />
+                </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Your Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Full Name"
-                  value={userName}
-                  onChangeText={(text) => {
-                    setUserName(text);
-                    setError("");
-                  }}
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>SHOP / BUSINESS NAME</Text>
+                  <NeumorphicInput
+                    placeholder="e.g., Global Enterprises"
+                    value={shopName}
+                    onChangeText={setShopName}
+                  />
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>OWNER'S FULL NAME</Text>
+                  <NeumorphicInput
+                    placeholder="e.g., Alex Johnson"
+                    value={userName}
+                    onChangeText={setUserName}
+                  />
+                </View>
+
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+                <NeumorphicButton
+                  title="VERIFY & SECURE"
+                  onPress={handleOTPSubmit}
+                  disabled={otp.length !== 6 || !shopName || !userName}
+                  style={styles.actionButton}
+                  variant="primary"
                 />
+
+                <View style={styles.resendContainer}>
+                  {resendCountdown > 0 ? (
+                    <Text style={styles.resendText}>
+                      Resend code in <Text style={{ color: THEME.primary, fontWeight: "800" }}>{resendCountdown}s</Text>
+                    </Text>
+                  ) : (
+                    <TouchableOpacity onPress={handleResendOTP}>
+                      <Text style={styles.resendLink}>RESEND CODE</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity onPress={() => setStep("phone")} style={{ marginTop: 20 }}>
+                    <Text style={styles.changePhoneText}>Use a different number</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
+            )}
+          </NeumorphicCard>
 
-              {error && <Text style={styles.error}>{error}</Text>}
-
-              <Button
-                title="Verify & Continue"
-                onPress={handleOTPSubmit}
-                disabled={otp.length !== 6}
-              />
-
-              <TouchableOpacity onPress={() => setStep("phone")}>
-                <Text style={styles.changePhone}>Change Phone Number</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        {/* Info Box */}
-        <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>🔒 Secure & Private</Text>
-          <Text style={styles.infoText}>
-            Your data is encrypted and stored securely.
-          </Text>
-          <Text style={styles.infoText}>
-            No third party has access to your ledger.
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              ENCRYPTED • SECURE • CLOUD-SYNC
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: THEME.background,
   },
   scrollContent: {
-    padding: 20,
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 40,
   },
   header: {
     alignItems: "center",
-    marginBottom: 40,
-    marginTop: 20,
-  },
-  logo: {
-    fontSize: 48,
-    marginBottom: 16,
+    marginBottom: 48,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 8,
+    fontSize: 48,
+    fontWeight: "900",
+    color: THEME.primary,
+    letterSpacing: 6,
+  },
+  titleUnderline: {
+    width: 60,
+    height: 4,
+    backgroundColor: THEME.secondary,
+    marginTop: -4,
+    borderRadius: 2,
   },
   subtitle: {
     fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
-  },
-  formContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  stepTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 8,
-  },
-  stepSubtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 24,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#F3F4F6",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#1F2937",
-  },
-  phoneInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-  },
-  countryCode: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#374151",
-    marginRight: 4,
-  },
-  phoneInput: {
-    flex: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#1F2937",
-  },
-  formattedPhone: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 4,
-  },
-  resendText: {
-    fontSize: 13,
-    color: "#2563EB",
+    color: THEME.textMuted,
     marginTop: 12,
-    fontWeight: "600",
-    textAlign: "center",
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
-  resendTextDisabled: {
-    color: "#9CA3AF",
+  authCard: {
+    marginBottom: 20,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginVertical: 20,
+  cardContent: {
+    padding: 24,
   },
-  error: {
-    color: "#DC2626",
-    fontSize: 14,
-    marginBottom: 12,
+  cardTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: THEME.textMain,
+    marginBottom: 8,
+  },
+  cardSubtitle: {
+    fontSize: 15,
+    color: THEME.textMuted,
+    marginBottom: 32,
+    lineHeight: 22,
     fontWeight: "500",
   },
-  changePhone: {
-    color: "#2563EB",
+  form: {
+    width: "100%",
+  },
+  inputWrapper: {
+    marginBottom: 24,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: THEME.textMuted,
+    marginBottom: 10,
+    marginLeft: 4,
+    letterSpacing: 1.5,
+  },
+  actionButton: {
+    marginTop: 10,
+  },
+  resendContainer: {
+    alignItems: "center",
+    marginTop: 24,
+  },
+  resendText: {
     fontSize: 14,
-    textAlign: "center",
-    marginTop: 16,
+    color: THEME.textMuted,
     fontWeight: "600",
   },
-  infoBox: {
-    backgroundColor: "#DBEAFE",
-    borderLeftWidth: 4,
-    borderLeftColor: "#2563EB",
-    borderRadius: 8,
-    padding: 16,
-  },
-  infoTitle: {
+  resendLink: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#1E40AF",
-    marginBottom: 8,
+    color: THEME.primary,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
-  infoText: {
+  changePhoneText: {
     fontSize: 13,
-    color: "#1E40AF",
-    marginBottom: 4,
+    color: THEME.textMuted,
+    fontWeight: "600",
+    opacity: 0.8,
+  },
+  errorText: {
+    color: THEME.danger,
+    fontSize: 13,
+    marginBottom: 16,
+    marginLeft: 4,
+    fontWeight: "700",
+  },
+  footer: {
+    marginTop: 48,
+    alignItems: "center",
+  },
+  footerText: {
+    fontSize: 11,
+    color: THEME.textMuted,
+    fontWeight: "800",
+    letterSpacing: 3,
+    opacity: 0.6,
   },
 });

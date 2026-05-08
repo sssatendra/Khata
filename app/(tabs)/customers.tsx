@@ -1,29 +1,33 @@
-import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { THEME } from "../../constants/theme";
+import { NeumorphicCard } from "../../components/ui/NeumorphicCard";
 import { SearchBar } from "../../components/ui/SearchBar";
 import { EmptyState, Loading } from "../../components/ui/StateIndicators";
-import { useCustomerData, useCustomerSearch } from "../../hooks/useData";
-import { customerService } from "../../services/firestore";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
+import { useCustomerData, useCustomerSearch } from "../../hooks/useData";
+import { customerService } from "../../services/firestore";
 import { formatCurrency } from "../../utils/helpers";
 
 export default function CustomersTab() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { customers, loading: customersLoading } = useCustomerData(user?.shopId || "");
   const { searchResults, handleSearch, searchQuery } = useCustomerSearch(
     user?.shopId || "",
   );
-  const { getRiskLevel, updateCustomerInStore } = useDataStore();
+  const { getRiskLevel } = useDataStore();
   const [filterRiskLevel, setFilterRiskLevel] = useState<
     "all" | "high" | "medium" | "low"
   >("all");
@@ -41,22 +45,13 @@ export default function CustomersTab() {
   const getRiskColor = (level: "low" | "medium" | "high") => {
     switch (level) {
       case "high":
-        return "#DC2626";
+        return THEME.danger;
       case "medium":
-        return "#F59E0B";
+        return THEME.warning;
       case "low":
-        return "#10B981";
-    }
-  };
-
-  const getRiskIcon = (level: "low" | "medium" | "high") => {
-    switch (level) {
-      case "high":
-        return "🔴";
-      case "medium":
-        return "🟠";
-      case "low":
-        return "🟢";
+        return THEME.success;
+      default:
+        return THEME.textMuted;
     }
   };
 
@@ -83,109 +78,131 @@ export default function CustomersTab() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <FlatList
         data={filteredCustomers}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
-          <>
-            <SearchBar onSearch={handleSearch} />
+          <View style={{ paddingTop: insets.top }}>
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Customers</Text>
+              <SearchBar onSearch={handleSearch} />
+            </View>
 
-            {/* Filter Tabs */}
+            {/* Filter Tabs - Matching Dashboard Style */}
             <View style={styles.filterTabs}>
               {(["all", "high", "medium", "low"] as const).map((level) => (
                 <TouchableOpacity
                   key={level}
-                  style={[
-                    styles.filterTab,
-                    filterRiskLevel === level && styles.filterTabActive,
-                  ]}
                   onPress={() => setFilterRiskLevel(level)}
+                  style={styles.filterTabItem}
                 >
-                  <Text
+                  <View
                     style={[
-                      styles.filterTabText,
-                      filterRiskLevel === level && styles.filterTabTextActive,
+                      styles.filterTab,
+                      filterRiskLevel === level && styles.filterTabActive,
                     ]}
                   >
-                    {level === "all"
-                      ? "All"
-                      : level.charAt(0).toUpperCase() + level.slice(1)}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.filterTabText,
+                        filterRiskLevel === level && styles.filterTabTextActive,
+                      ]}
+                    >
+                      {level === "all"
+                        ? "All"
+                        : level.charAt(0).toUpperCase() + level.slice(1)}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
 
             {filteredCustomers.length > 0 && (
-              <Text style={styles.listTitle}>
-                All Customers ({filteredCustomers.length})
+              <Text style={styles.listLabel}>
+                DIRECTORY ({filteredCustomers.length})
               </Text>
             )}
-          </>
+          </View>
         }
         renderItem={({ item: customer }) => (
           <TouchableOpacity
-            style={styles.customerItem}
+            activeOpacity={0.8}
             onPress={() =>
               router.push({
-                pathname: "/customer/[id]",
+                pathname: "/customer/[id]" as any,
                 params: { id: customer.id },
               })
             }
             onLongPress={() => handleDeleteCustomer(customer.id, customer.name)}
           >
-            <View style={styles.customerInfo}>
-              <View style={styles.customerHeader}>
-                <Text style={styles.customerName}>{customer.name}</Text>
-                <View
+            <NeumorphicCard style={styles.customerItem} borderRadius={16} contentStyle={styles.itemContent}>
+              <View style={styles.customerInfo}>
+                <View style={styles.customerHeader}>
+                  <Text style={styles.customerName} numberOfLines={1}>{customer.name}</Text>
+                  <View
+                    style={[
+                      styles.riskBadge,
+                      { backgroundColor: getRiskColor(getRiskLevel(customer)) + "20" },
+                    ]}
+                  >
+                    <View style={[styles.dot, { backgroundColor: getRiskColor(getRiskLevel(customer)) }]} />
+                    <Text style={[styles.badgeText, { color: getRiskColor(getRiskLevel(customer)) }]}>
+                      {getRiskLevel(customer).toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.customerPhone}>{customer.phone}</Text>
+              </View>
+
+              <View style={styles.customerBalance}>
+                <Text style={styles.balanceLabel}>OUTSTANDING</Text>
+                <Text
                   style={[
-                    styles.riskBadge,
-                    { backgroundColor: getRiskColor(getRiskLevel(customer)) },
+                    styles.balanceAmount,
+                    { color: customer.balance > 0 ? THEME.danger : THEME.success },
                   ]}
                 >
-                  <Text style={styles.badgeText}>
-                    {getRiskIcon(getRiskLevel(customer))}
-                  </Text>
-                </View>
+                  {formatCurrency(customer.balance)}
+                </Text>
               </View>
-              <Text style={styles.customerPhone}>{customer.phone}</Text>
-            </View>
-
-            <View style={styles.customerBalance}>
-              <Text style={styles.balanceLabel}>Balance</Text>
-              <Text
-                style={[
-                  styles.balanceAmount,
-                  { color: customer.balance > 0 ? "#DC2626" : "#10B981" },
-                ]}
-              >
-                {formatCurrency(customer.balance)}
-              </Text>
-            </View>
+            </NeumorphicCard>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
           <EmptyState
-            icon="📭"
-            title="No Customers Found"
+            icon="🔍"
+            title="No Results"
             subtitle={
               searchQuery
-                ? "Try a different search"
-                : "Add your first customer to get started"
+                ? "We couldn't find any customers matching that search."
+                : "Your customer list is empty. Start by adding one!"
             }
           />
         }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: THEME.background,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 10,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: THEME.textMain,
+    marginBottom: 16,
+    letterSpacing: -0.5,
   },
   filterTabs: {
     flexDirection: "row",
@@ -193,86 +210,106 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
+  filterTabItem: {
+    flex: 1,
+  },
   filterTab: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#E5E7EB",
+    paddingVertical: 10,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   filterTabActive: {
-    backgroundColor: "#2563EB",
+    backgroundColor: THEME.primary + "15",
+    borderColor: THEME.primary + "60",
+    borderWidth: 1,
   },
   filterTabText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#6B7280",
+    fontWeight: "700",
+    color: THEME.textMuted,
+    letterSpacing: 0.5,
   },
   filterTabTextActive: {
-    color: "#FFFFFF",
+    color: THEME.primary,
+    fontWeight: "900",
   },
-  listTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6B7280",
-    paddingHorizontal: 16,
-    paddingTop: 12,
+  listLabel: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: THEME.textMuted,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    marginBottom: 8,
+    letterSpacing: 2,
+    textTransform: "uppercase",
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 120, // Account for tab bar
   },
   customerItem: {
+    marginHorizontal: 16,
+    marginVertical: 6,
+  },
+  itemContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 16,
-    marginVertical: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    padding: 14,
   },
   customerInfo: {
     flex: 1,
+    marginRight: 10,
   },
   customerHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     marginBottom: 4,
   },
   customerName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
-    flex: 1,
+    fontSize: 17,
+    fontWeight: "700",
+    color: THEME.textMain,
+    marginRight: 8,
+    flexShrink: 1,
   },
   riskBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
+    flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
   },
   badgeText: {
-    fontSize: 14,
+    fontSize: 9,
+    fontWeight: "900",
   },
   customerPhone: {
-    fontSize: 12,
-    color: "#6B7280",
+    fontSize: 13,
+    color: THEME.textMuted,
+    fontWeight: "600",
   },
   customerBalance: {
     alignItems: "flex-end",
-    minWidth: 80,
   },
   balanceLabel: {
-    fontSize: 11,
-    color: "#9CA3AF",
+    fontSize: 9,
+    color: THEME.textMuted,
+    fontWeight: "800",
     marginBottom: 2,
+    letterSpacing: 0.5,
   },
   balanceAmount: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "900",
   },
 });

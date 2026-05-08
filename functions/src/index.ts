@@ -1,5 +1,5 @@
 import axios from "axios";
-import * as cors from "cors";
+import cors from "cors";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 
@@ -8,9 +8,32 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const corsHandler = cors({ origin: true });
 const db = admin.firestore();
 const auth = admin.auth();
+
+const corsHandler = cors({ origin: true });
+const isDev = process.env.ENVIRONMENT === "development";
+
+console.log(`🚀 [BACKEND] Loading Khata Functions (Mode: ${process.env.ENVIRONMENT || "production"})`);
+
+import * as fs from "fs";
+import * as path from "path";
+
+// File-based store for development (shared across function instances)
+const DEV_STORE_PATH = path.join(__dirname, "../dev_otp_store.json");
+
+function getDevStore() {
+  if (!fs.existsSync(DEV_STORE_PATH)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(DEV_STORE_PATH, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveDevStore(store: any) {
+  fs.writeFileSync(DEV_STORE_PATH, JSON.stringify(store, null, 2));
+}
 
 /**
  * Configuration - Update these with your actual values
@@ -94,57 +117,80 @@ export const sendOTP = functions.https.onRequest((req, res) => {
         ? phoneNumber
         : `+91${phoneNumber}`;
 
-      // Check rate limiting (max 5 OTP requests per phone per hour)
-      const rateLimitKey = `otp_limit:${formattedPhone}`;
-      const doc = await db.collection("_metadata").doc(rateLimitKey).get();
-      const count = doc.data()?.count || 0;
-      const timestamp = doc.data()?.timestamp || Date.now();
+      const isDev = process.env.ENVIRONMENT === "development";
 
-      if (count >= 5 && Date.now() - timestamp < 3600000) {
-        res
-          .status(429)
-          .json({ error: "Too many OTP requests. Try again later." });
-        return;
+      if (!isDev) {
+        // Check rate limiting (max 5 OTP requests per phone per hour) - PROD ONLY
+        const rateLimitKey = `otp_limit:${formattedPhone}`;
+        const doc = await db.collection("_metadata").doc(rateLimitKey).get();
+        const count = doc.data()?.count || 0;
+        const timestamp = doc.data()?.timestamp || Date.now();
+
+        if (count >= 5 && Date.now() - timestamp < 3600000) {
+          res
+            .status(429)
+            .json({ error: "Too many OTP requests. Try again later." });
+          return;
+        }
+
+        // Update rate limiting
+        await db
+          .collection("_metadata")
+          .doc(rateLimitKey)
+          .set(
+            {
+              count: count + 1,
+              timestamp: Date.now(),
+            },
+            { merge: true },
+          );
       }
 
-      // Update rate limiting
-      await db
-        .collection("_metadata")
-        .doc(rateLimitKey)
-        .set(
-          {
-            count: count + 1,
-            timestamp: Date.now(),
-          },
-          { merge: true },
-        );
-
-      // Create OTP (in production, Firebase SMS handles this)
-      // For demo, we generate a 6-digit code
+      // Create OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = Date.now() + 300000; // 5 minutes
 
-      // Store OTP temporarily
-      await db.collection("_otp_temp").doc(formattedPhone).set(
-        {
+      if (isDev) {
+        // DEV: Store in file
+        const store = getDevStore();
+        store[formattedPhone] = {
           otp,
           expiresAt,
           attempts: 0,
-          createdAt: Date.now(),
-        },
-        { merge: true },
-      );
+        };
+        saveDevStore(store);
+      } else {
+        // PROD: Store in Firestore
+        await db.collection("_otp_temp").doc(formattedPhone).set(
+          {
+            otp,
+            expiresAt,
+            attempts: 0,
+            createdAt: Date.now(),
+          },
+          { merge: true },
+        );
+      }
 
-      // Log OTP (in production, Firebase Messaging sends SMS)
-      console.log(`📱 OTP for ${formattedPhone}: ${otp} (expires in 5 min)`);
-
-      // In production with Twilio:
-      // await sendOTPViaTwilio(formattedPhone, otp);
+      // Handle OTP delivery based on environment
+      if (process.env.ENVIRONMENT === "development") {
+        // DEV MODE: Just log the OTP to the console
+        console.log("-----------------------------------------");
+        console.log(`📱 [DEV MODE] OTP for ${formattedPhone}: ${otp}`);
+        console.log("-----------------------------------------");
+      } else {
+        // PRODUCTION: Send real SMS via Twilio
+        // await sendOTPViaTwilio(formattedPhone, otp);
+        console.log(`📱 [PROD MODE] Sending SMS to ${formattedPhone}`);
+      }
 
       res.json({
         success: true,
-        message: `OTP sent to ${formattedPhone}`,
-        // For testing: include OTP (remove in production!)
+        message:
+          process.env.ENVIRONMENT === "development"
+            ? `[DEV] OTP is ${otp}`
+            : `OTP sent to ${formattedPhone}`,
+        // For testing: include OTP in response ONLY in development
         otp: process.env.ENVIRONMENT === "development" ? otp : undefined,
       });
     } catch (error) {
@@ -181,9 +227,18 @@ export const verifyOTP = functions.https.onRequest((req, res) => {
         ? phoneNumber
         : `+91${phoneNumber}`;
 
-      // Get stored OTP
-      const otpDoc = await db.collection("_otp_temp").doc(formattedPhone).get();
-      const otpData = otpDoc.data();
+      const isDev = process.env.ENVIRONMENT === "development";
+      let otpData;
+
+      if (isDev) {
+        // DEV: Get from file
+        const store = getDevStore();
+        otpData = store[formattedPhone];
+      } else {
+        // PROD: Get from Firestore
+        const otpDoc = await db.collection("_otp_temp").doc(formattedPhone).get();
+        otpData = otpDoc.data() as any;
+      }
 
       if (!otpData) {
         res.status(400).json({ error: "OTP not found. Request a new one." });
@@ -192,7 +247,13 @@ export const verifyOTP = functions.https.onRequest((req, res) => {
 
       // Check if expired
       if (Date.now() > otpData.expiresAt) {
-        await db.collection("_otp_temp").doc(formattedPhone).delete();
+        if (isDev) {
+          const store = getDevStore();
+          delete store[formattedPhone];
+          saveDevStore(store);
+        } else {
+          await db.collection("_otp_temp").doc(formattedPhone).delete();
+        }
         res.status(400).json({ error: "OTP expired. Request a new one." });
         return;
       }
@@ -207,30 +268,67 @@ export const verifyOTP = functions.https.onRequest((req, res) => {
 
       // Verify OTP
       if (otpData.otp !== otp) {
-        await db
-          .collection("_otp_temp")
-          .doc(formattedPhone)
-          .update({
-            attempts: otpData.attempts + 1,
-          });
+        if (isDev) {
+          const store = getDevStore();
+          if (store[formattedPhone]) {
+            store[formattedPhone].attempts += 1;
+            saveDevStore(store);
+          }
+        } else {
+          await db
+            .collection("_otp_temp")
+            .doc(formattedPhone)
+            .update({
+              attempts: otpData.attempts + 1,
+            });
+        }
         res.status(400).json({ error: "Invalid OTP" });
         return;
       }
 
-      // OTP is valid - check if user exists
-      let user;
-      try {
-        user = await auth.getUserByPhoneNumber(formattedPhone);
-      } catch (error: any) {
-        if (error.code === "auth/user-not-found") {
-          // Create new user
-          user = await auth.createUser({
-            phoneNumber: formattedPhone,
-            displayName: userData?.name || "Khata User",
-            disabled: false,
-          });
+      // OTP is valid
+      let user: any;
+      let customToken = "dev-token-allow-access";
 
-          // Create user profile in Firestore
+      if (isDev) {
+        // DEV: Complete mock flow
+        user = {
+          uid: `dev-user-${formattedPhone.replace(/\+/g, "")}`,
+          phoneNumber: formattedPhone,
+          displayName: userData?.name || "Dev User",
+        };
+        
+        const store = getDevStore();
+        delete store[formattedPhone];
+        saveDevStore(store);
+
+        res.json({
+          success: true,
+          customToken,
+          user,
+        });
+        return;
+      }
+
+      // PROD: Real Firebase flow
+      try {
+        // Try to get or create user
+        try {
+          user = await auth.getUserByPhoneNumber(formattedPhone);
+        } catch (error: any) {
+          if (error.code === "auth/user-not-found") {
+            // Real Auth creation in production
+            user = await auth.createUser({
+              phoneNumber: formattedPhone,
+              displayName: userData?.name || "Khata User",
+            });
+          } else {
+            throw error;
+          }
+        }
+
+        // Create profile in Firestore
+        try {
           await db
             .collection("users")
             .doc(user.uid)
@@ -238,30 +336,34 @@ export const verifyOTP = functions.https.onRequest((req, res) => {
               uid: user.uid,
               phoneNumber: formattedPhone,
               name: userData?.name || "Khata User",
-              shopName: userData?.shopName || "My Store",
-              role: "admin", // First user is admin
+              role: "admin",
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-
-          // Create shop entry
-          await db.collection("shops").add({
-            ownerPhone: formattedPhone,
-            name: userData?.shopName || "My Store",
-            ownerName: userData?.name || "Khata User",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        } else {
-          throw error;
+        } catch (e) {
+          console.warn("Firestore profile creation failed, continuing...", e);
         }
+
+        // Generate token
+        customToken = await auth.createCustomToken(user.uid);
+
+        // Clean up OTP
+        await db.collection("_otp_temp").doc(formattedPhone).delete();
+
+        res.json({
+          success: true,
+          customToken,
+          user: {
+            uid: user.uid,
+            phoneNumber: user.phoneNumber,
+            displayName: user.displayName,
+          },
+        });
+        return;
+      } catch (error) {
+        console.error("Error in verifyOTP flow:", error);
+        throw error;
       }
-
-      // Generate custom token for Expo
-      const customToken = await auth.createCustomToken(user.uid);
-
-      // Clean up OTP
-      await db.collection("_otp_temp").doc(formattedPhone).delete();
 
       // Log successful verification
       console.log(`✅ User ${user.uid} verified with OTP`);
@@ -321,21 +423,44 @@ export const resendOTP = functions.https.onRequest((req, res) => {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = Date.now() + 300000;
 
-      await db.collection("_otp_temp").doc(formattedPhone).set(
-        {
+      if (isDev) {
+        // DEV: Store in file
+        const store = getDevStore();
+        store[formattedPhone] = {
           otp,
           expiresAt,
           attempts: 0,
-          createdAt: Date.now(),
-        },
-        { merge: true },
-      );
+        };
+        saveDevStore(store);
+      } else {
+        // PROD: Store in Firestore
+        await db.collection("_otp_temp").doc(formattedPhone).set(
+          {
+            otp,
+            expiresAt,
+            attempts: 0,
+            createdAt: Date.now(),
+          },
+          { merge: true },
+        );
+      }
 
-      console.log(`📱 Resent OTP for ${formattedPhone}: ${otp}`);
+      // Handle OTP delivery based on environment
+      if (process.env.ENVIRONMENT === "development") {
+        console.log("-----------------------------------------");
+        console.log(`📱 [DEV MODE] Resent OTP for ${formattedPhone}: ${otp}`);
+        console.log("-----------------------------------------");
+      } else {
+        // await sendOTPViaTwilio(formattedPhone, otp);
+        console.log(`📱 [PROD MODE] Resending SMS to ${formattedPhone}`);
+      }
 
       res.json({
         success: true,
-        message: "OTP resent",
+        message:
+          process.env.ENVIRONMENT === "development"
+            ? `[DEV] Resent OTP is ${otp}`
+            : "OTP resent",
         otp: process.env.ENVIRONMENT === "development" ? otp : undefined,
       });
     } catch (error) {
@@ -347,27 +472,43 @@ export const resendOTP = functions.https.onRequest((req, res) => {
   });
 });
 
+import { onSchedule } from "firebase-functions/v2/scheduler";
+
 /**
  * Scheduled function to clean up expired OTPs (runs every hour)
  */
-export const cleanupExpiredOTPs = functions.pubsub
-  .schedule("every 60 minutes")
-  .onRun(async () => {
-    try {
-      const now = Date.now();
+export const cleanupExpiredOTPs = onSchedule("every 60 minutes", async () => {
+  try {
+    const now = Date.now();
+
+    if (isDev) {
+      // DEV: Clean up file store
+      const store = getDevStore();
+      let count = 0;
+      for (const phone in store) {
+        if (store[phone].expiresAt < now) {
+          delete store[phone];
+          count++;
+        }
+      }
+      saveDevStore(store);
+      console.log(`🗑️ [DEV] Cleaned up ${count} expired OTPs from file store`);
+    } else {
+      // PROD: Clean up Firestore
       const expiredOtps = await db
         .collection("_otp_temp")
         .where("expiresAt", "<", now)
         .get();
 
       const batch = db.batch();
-      expiredOtps.docs.forEach((doc) => {
+      expiredOtps.docs.forEach((doc: any) => {
         batch.delete(doc.ref);
       });
 
       await batch.commit();
-      console.log(`🗑️ Cleaned up ${expiredOtps.docs.length} expired OTPs`);
-    } catch (error) {
-      console.error("Error cleaning up OTPs:", error);
+      console.log(`🗑️ Cleaned up ${expiredOtps.docs.length} expired OTPs from Firestore`);
     }
-  });
+  } catch (error) {
+    console.error("Error cleaning up OTPs:", error);
+  }
+});

@@ -1,12 +1,16 @@
-import { router } from "expo-router";
+import { Stack, router } from "expo-router";
 import { AddCustomerScreen } from "../screens/AddCustomerScreen";
 
 export default function AddCustomerPage() {
   return (
-    <AddCustomerScreen
-      onSuccess={() => {
-        router.back();
-      }}
-    />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <AddCustomerScreen
+        onSuccess={() => {
+          router.back();
+        }}
+        onBack={() => router.back()}
+      />
+    </>
   );
 }

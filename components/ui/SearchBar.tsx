@@ -1,6 +1,7 @@
 import React from "react";
-import { StyleSheet, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useUIStore } from "../../store/uiStore";
+import { NeumorphicInput } from "./NeumorphicInput";
 
 interface SearchBarProps {
   placeholder?: string;
@@ -20,12 +21,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.input}
+      <NeumorphicInput
         placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
         value={searchQuery}
         onChangeText={handleChangeText}
+        containerStyle={styles.inputContainer}
       />
     </View>
   );
@@ -33,20 +33,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#F9FAFB",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    width: "100%",
+    paddingVertical: 4,
   },
-  input: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: "#1F2937",
+  inputContainer: {
+    marginVertical: 0,
   },
 });

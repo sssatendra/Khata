@@ -1,17 +1,25 @@
 import React from "react";
 import {
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Loading } from "../../components/ui/StateIndicators";
-import { useDashboardStats, useTransactionData } from "../../hooks/useData";
+import { AnalyticsCharts } from "../../components/AnalyticsCharts";
+import {
+  useCustomerData,
+  useDashboardStats,
+  useTransactionData,
+} from "../../hooks/useData";
 import { useAuthStore } from "../../store/authStore";
 import { formatCurrency, formatDate } from "../../utils/helpers";
+import { THEME } from "../../constants/theme";
+import { NeumorphicCard } from "../../components/ui/NeumorphicCard";
 
 export default function AnalyticsTab() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { stats, loading: statsLoading } = useDashboardStats(
     user?.shopId || "",
@@ -19,63 +27,54 @@ export default function AnalyticsTab() {
   const { transactions, loading: transactionsLoading } = useTransactionData(
     user?.shopId || "",
   );
+  const { customers, loading: customersLoading } = useCustomerData(
+    user?.shopId || "",
+  );
 
-  if (statsLoading) {
-    return <Loading message="Loading analytics..." />;
+  if (statsLoading || customersLoading || transactionsLoading) {
+    return <Loading message="Preparing insights..." />;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Summary Cards */}
+        <Text style={styles.headerTitle}>Analytics</Text>
+
+        {/* Charts Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 Summary</Text>
-
-          <View style={styles.cardGrid}>
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>Total Outstanding</Text>
-              <Text style={styles.cardValue}>
-                {formatCurrency(stats?.totalOutstanding || 0)}
-              </Text>
-            </View>
-
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>Total Customers</Text>
-              <Text style={styles.cardValue}>{stats?.totalCustomers || 0}</Text>
-            </View>
-
-            <View style={[styles.card, styles.riskCard]}>
-              <Text style={styles.riskCardLabel}>🔴 High Risk</Text>
-              <Text style={styles.riskCardValue}>
-                {stats?.highRiskCount || 0}
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.sectionLabel}>BUSINESS PERFORMANCE</Text>
+          <AnalyticsCharts customers={customers} transactions={transactions} />
         </View>
 
         {/* Top Debtors */}
         {stats?.topDebtors && stats.topDebtors.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🏆 Top Debtors</Text>
+            <Text style={styles.sectionLabel}>TOP DEBTORS</Text>
 
             {stats.topDebtors.map((customer, index) => (
-              <View key={customer.id} style={styles.debtorItem}>
-                <View style={styles.debtorRank}>
-                  <Text style={styles.rankNumber}>{index + 1}</Text>
+              <NeumorphicCard
+                key={customer.id}
+                style={styles.debtorCard}
+                borderRadius={16}
+                contentStyle={styles.debtorContent}
+              >
+                <View style={styles.rankBadge}>
+                  <Text style={styles.rankText}>{index + 1}</Text>
                 </View>
                 <View style={styles.debtorInfo}>
                   <Text style={styles.debtorName}>{customer.name}</Text>
                   <Text style={styles.debtorPhone}>{customer.phone}</Text>
                 </View>
                 <View style={styles.debtorAmount}>
+                  <Text style={styles.amountLabel}>OWES</Text>
                   <Text style={styles.amountValue}>
                     {formatCurrency(customer.balance)}
                   </Text>
                 </View>
-              </View>
+              </NeumorphicCard>
             ))}
           </View>
         )}
@@ -83,230 +82,247 @@ export default function AnalyticsTab() {
         {/* Recent Transactions */}
         {stats?.recentTransactions && stats.recentTransactions.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📝 Recent Transactions</Text>
+            <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
 
             {stats.recentTransactions.slice(0, 5).map((txn) => (
-              <View key={txn.id} style={styles.transactionItem}>
+              <NeumorphicCard
+                key={txn.id}
+                style={styles.txnCard}
+                borderRadius={12}
+                contentStyle={styles.txnContent}
+              >
                 <View
                   style={[
                     styles.txnIcon,
                     {
                       backgroundColor:
-                        txn.type === "credit" ? "#FEE2E2" : "#F0FDF4",
+                        txn.type === "credit"
+                          ? THEME.danger + "20"
+                          : THEME.success + "20",
                     },
                   ]}
                 >
                   <Text style={styles.icon}>
-                    {txn.type === "credit" ? "➕" : "➖"}
+                    {txn.type === "credit" ? "⬆" : "⬇"}
                   </Text>
                 </View>
                 <View style={styles.txnInfo}>
                   <Text style={styles.txnType}>
-                    {txn.type === "credit" ? "Udhar" : "Payment"}
+                    {txn.type === "credit" ? "DUE ADDED" : "PAYMENT"}
                   </Text>
-                  <Text style={styles.txnDate}>
-                    {formatDate(txn.createdAt)}
-                  </Text>
+                  <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
                 </View>
                 <Text
                   style={[
                     styles.txnAmount,
                     {
-                      color: txn.type === "credit" ? "#DC2626" : "#10B981",
+                      color:
+                        txn.type === "credit"
+                          ? THEME.danger
+                          : THEME.success,
                     },
                   ]}
                 >
                   {txn.type === "credit" ? "+" : "-"}
                   {formatCurrency(txn.amount)}
                 </Text>
-              </View>
+              </NeumorphicCard>
             ))}
           </View>
         )}
 
         {/* Insights */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>💡 Insights</Text>
+          <Text style={styles.sectionLabel}>INSIGHTS & ACTIONABLE DATA</Text>
 
-          <View style={styles.insightBox}>
-            <Text style={styles.insightIcon}>📌</Text>
-            <Text style={styles.insightText}>
-              {stats?.highRiskCount === 0
-                ? "✅ No high-risk customers. Keep up the good work!"
-                : `⚠️ You have ${stats?.highRiskCount} high-risk customers requiring attention.`}
-            </Text>
-          </View>
-
-          {stats && stats.totalOutstanding > 0 && (
-            <View style={styles.insightBox}>
-              <Text style={styles.insightIcon}>💰</Text>
+          <NeumorphicCard 
+            borderRadius={20} 
+            style={styles.insightCard}
+            contentStyle={styles.insightBox}
+          >
+            <View style={[styles.insightIconBg, { backgroundColor: THEME.primary + "20" }]}>
+              <Text style={styles.insightIconText}>💡</Text>
+            </View>
+            <View style={styles.insightTextContainer}>
+              <Text style={styles.insightTitle}>Pro-Tip</Text>
               <Text style={styles.insightText}>
-                You have {formatCurrency(stats.totalOutstanding)} in pending
-                dues from {stats.totalCustomers} customers.
+                {stats?.highRiskCount === 0
+                  ? "Your collection health is excellent! No high-risk debtors detected currently."
+                  : `Action Required: ${stats?.highRiskCount} customers have crossed the safe threshold.`}
               </Text>
             </View>
+          </NeumorphicCard>
+
+          {stats && stats.totalOutstanding > 0 && (
+            <NeumorphicCard 
+              borderRadius={20} 
+              style={[styles.insightCard, { marginTop: 16 }]} 
+              contentStyle={styles.insightBox}
+            >
+              <View style={[styles.insightIconBg, { backgroundColor: THEME.success + "20" }]}>
+                <Text style={styles.insightIconText}>📈</Text>
+              </View>
+              <View style={styles.insightTextContainer}>
+                <Text style={styles.insightTitle}>Recovery Potential</Text>
+                <Text style={styles.insightText}>
+                  Total recovery potential is {formatCurrency(stats.totalOutstanding)} across {stats.totalCustomers} active accounts.
+                </Text>
+              </View>
+            </NeumorphicCard>
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: THEME.background,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: THEME.textMain,
+    marginVertical: 20,
+    marginLeft: 4,
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1F2937",
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: THEME.textMuted,
+    marginBottom: 16,
+    marginLeft: 4,
+    letterSpacing: 2,
+  },
+  debtorCard: {
     marginBottom: 12,
   },
-  cardGrid: {
-    gap: 12,
-  },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  riskCard: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#FEE2E2",
-  },
-  cardLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "500",
-    marginBottom: 8,
-  },
-  riskCardLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  cardValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  riskCardValue: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#DC2626",
-  },
-  debtorItem: {
+  debtorContent: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    padding: 14,
   },
-  debtorRank: {
+  rankBadge: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: "#2563EB",
+    borderRadius: 8,
+    backgroundColor: THEME.primary,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
-  rankNumber: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFFFFF",
+  rankText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F172A",
   },
   debtorInfo: {
     flex: 1,
   },
   debtorName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
+    fontSize: 17,
+    fontWeight: "700",
+    color: THEME.textMain,
   },
   debtorPhone: {
-    fontSize: 12,
-    color: "#6B7280",
+    fontSize: 13,
+    color: THEME.textMuted,
     marginTop: 2,
   },
   debtorAmount: {
     alignItems: "flex-end",
   },
-  amountValue: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#DC2626",
+  amountLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: THEME.textMuted,
+    marginBottom: 2,
   },
-  transactionItem: {
+  amountValue: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: THEME.danger,
+  },
+  txnCard: {
+    marginBottom: 10,
+  },
+  txnContent: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
     padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
   },
   txnIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
   icon: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: "900",
   },
   txnInfo: {
     flex: 1,
   },
   txnType: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#1F2937",
+    fontWeight: "800",
+    color: THEME.textMain,
   },
   txnDate: {
     fontSize: 11,
-    color: "#9CA3AF",
+    color: THEME.textMuted,
     marginTop: 2,
   },
   txnAmount: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  insightCard: {
+    width: "100%",
   },
   insightBox: {
-    backgroundColor: "#DBEAFE",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: "#2563EB",
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
+    alignItems: "center",
+    paddingVertical: 12, // Reduced from 16 since Card already has 16
+    paddingHorizontal: 0,
   },
-  insightIcon: {
-    fontSize: 16,
-    marginTop: 2,
+  insightIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  insightIconText: {
+    fontSize: 22,
+  },
+  insightTextContainer: {
+    flex: 1,
+  },
+  insightTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: THEME.textMain,
+    marginBottom: 2,
+    letterSpacing: 0.5,
   },
   insightText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#1E40AF",
-    fontWeight: "500",
+    fontSize: 14,
+    color: THEME.textMuted,
+    fontWeight: "600",
+    lineHeight: 20,
   },
 });

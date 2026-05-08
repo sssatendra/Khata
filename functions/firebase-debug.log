@@ -1,0 +1,87 @@
+[debug] [2026-05-08T04:35:24.642Z] ----------------------------------------------------------------------
+[debug] [2026-05-08T04:35:24.647Z] Command:       C:\Program Files\nodejs\node.exe C:\projects\Khata\functions\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions
+[debug] [2026-05-08T04:35:24.648Z] CLI Version:   15.16.0
+[debug] [2026-05-08T04:35:24.648Z] Platform:      win32
+[debug] [2026-05-08T04:35:24.649Z] Node Version:  v20.17.0
+[debug] [2026-05-08T04:35:24.649Z] Time:          Fri May 08 2026 10:05:24 GMT+0530 (India Standard Time)
+[debug] [2026-05-08T04:35:24.649Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-08T04:35:26.944Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] Failed to authenticate, have you run firebase login?
+[warn] !  emulators: You are not currently authenticated so some features may not work correctly. Please run firebase login to authenticate the CLI. 
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[debug] [2026-05-08T04:35:27.074Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-08T04:35:27.075Z] assigned listening specs for emulators {"user":{"ui":[{"address":"0.0.0.0","family":"IPv4","port":4000}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-05-08T04:35:27.080Z] Write emulator hub locator at C:\Users\sssat\AppData\Local\Temp\hub-udhar-khata-113cb.json
+[debug] [2026-05-08T04:35:27.113Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-08T04:35:27.114Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-08T04:35:27.114Z] late-assigned ports for functions and eventarc emulators {"user":{"ui":[{"address":"0.0.0.0","family":"IPv4","port":4000}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"0.0.0.0","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2026-05-08T04:35:27.120Z] No OAuth tokens found
+[debug] [2026-05-08T04:35:27.122Z] No OAuth tokens found
+[debug] [2026-05-08T04:35:27.122Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-08T04:35:27.123Z] Failed to get Admin SDK config for udhar-khata-113cb, falling back to cache Failed to get Admin SDK for Firebase project udhar-khata-113cb. Please make sure the project exists and your account has permission to access it. {"name":"FirebaseError","children":[],"exit":2,"message":"Failed to get Admin SDK for Firebase project udhar-khata-113cb. Please make sure the project exists and your account has permission to access it.","original":{"name":"FirebaseError","children":[],"exit":1,"message":"Failed to authenticate, have you run \u001b[1mfirebase login\u001b[22m?","original":{},"status":500},"status":500}
+[warn] !  functions: Unable to fetch project Admin SDK configuration, Admin SDK behavior in Cloud Functions emulator may be incorrect. {"metadata":{"emulator":{"name":"functions"},"message":"Unable to fetch project Admin SDK configuration, Admin SDK behavior in Cloud Functions emulator may be incorrect."}}
+[info] i  functions: Watching "C:\projects\Khata\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\projects\\Khata\\functions\" for Cloud Functions..."}}
+[debug] [2026-05-08T04:35:27.185Z] Validating nodejs source
+[debug] [2026-05-08T04:35:29.072Z] > [functions] package.json contents: {
+  "name": "khata-backend",
+  "version": "1.0.0",
+  "description": "Khata App Backend - Firebase Cloud Functions",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^7.2.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "firebase-tools": "^15.16.0",
+    "typescript": "~5.9.2"
+  }
+}
+[debug] [2026-05-08T04:35:29.073Z] Building nodejs source
+[debug] [2026-05-08T04:35:29.074Z] Failed to find version of module node: reached end of search path C:\projects\Khata\functions\node_modules
+[info] +  functions: Using node@20 from host. 
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-05-08T04:35:29.084Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-08T04:35:29.101Z] Found firebase-functions binary at 'C:\projects\Khata\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8287
+
+[info] 🚀 [BACKEND] Loading Khata Functions (Mode: production)
+
+[debug] [2026-05-08T04:35:29.987Z] Got response from /__/functions.yaml {"endpoints":{"sendOTP":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"sendOTP"},"verifyOTP":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"verifyOTP"},"resendOTP":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"resendOTP"},"cleanupExpiredOTPs":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"scheduleTrigger":{"schedule":"every 60 minutes","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetrySeconds":null,"minBackoffSeconds":null,"maxBackoffSeconds":null},"timeZone":null},"entryPoint":"cleanupExpiredOTPs"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}],"extensions":{}}
+[info] +  functions: Loaded functions definitions from source: sendOTP, verifyOTP, resendOTP, cleanupExpiredOTPs. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: sendOTP, verifyOTP, resendOTP, cleanupExpiredOTPs."}}
+[info] +  functions[us-central1-sendOTP]: http function initialized (http://127.0.0.1:5001/udhar-khata-113cb/us-central1/sendOTP). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/udhar-khata-113cb/us-central1/sendOTP)."}}
+[info] +  functions[us-central1-verifyOTP]: http function initialized (http://127.0.0.1:5001/udhar-khata-113cb/us-central1/verifyOTP). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/udhar-khata-113cb/us-central1/verifyOTP)."}}
+[info] +  functions[us-central1-resendOTP]: http function initialized (http://127.0.0.1:5001/udhar-khata-113cb/us-central1/resendOTP). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/udhar-khata-113cb/us-central1/resendOTP)."}}
+[info] i  functions[us-central1-cleanupExpiredOTPs]: function ignored because the pubsub emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the pubsub emulator does not exist or is not running."}}
+[debug] [2026-05-08T04:35:35.087Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬──────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port    │ View in Emulator UI             │
+├───────────┼──────────────┼─────────────────────────────────┤
+│ Functions │ 0.0.0.0:5001 │ http://127.0.0.1:4000/functions │
+└───────────┴──────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 

@@ -6,6 +6,7 @@ import { CustomerDetailScreen } from "../../screens/CustomerDetailScreen";
 import { TransactionScreen } from "../../screens/TransactionScreen";
 import { customerService } from "../../services/firestore";
 import { useDataStore } from "../../store/dataStore";
+import { THEME } from "../../constants/theme";
 
 export default function CustomerDetailPage() {
   const { id } = useLocalSearchParams();
@@ -46,20 +47,16 @@ export default function CustomerDetailPage() {
   if (screen === "transaction") {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Add Transaction",
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => setScreen("detail")}>
-                <Text style={styles.headerButton}>← Back</Text>
-              </TouchableOpacity>
-            ),
-          }}
-        />
-        <TransactionScreen
-          customer={customer}
-          onSuccess={() => setScreen("detail")}
-        />
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      <TransactionScreen
+        customer={customer}
+        onSuccess={() => setScreen("detail")}
+        onBack={() => setScreen("detail")}
+      />
       </>
     );
   }
@@ -67,21 +64,17 @@ export default function CustomerDetailPage() {
   if (screen === "edit") {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: "Edit Customer",
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => setScreen("detail")}>
-                <Text style={styles.headerButton}>← Back</Text>
-              </TouchableOpacity>
-            ),
-          }}
-        />
-        <AddCustomerScreen
-          customer={customer}
-          isEditing
-          onSuccess={() => setScreen("detail")}
-        />
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      <AddCustomerScreen
+        customer={customer}
+        isEditing
+        onSuccess={() => setScreen("detail")}
+        onBack={() => setScreen("detail")}
+      />
       </>
     );
   }
@@ -90,12 +83,7 @@ export default function CustomerDetailPage() {
     <>
       <Stack.Screen
         options={{
-          title: customer.name,
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.headerButton}>← Back</Text>
-            </TouchableOpacity>
-          ),
+          headerShown: false,
         }}
       />
       <CustomerDetailScreen
@@ -103,6 +91,7 @@ export default function CustomerDetailPage() {
         onEditPress={() => setScreen("edit")}
         onTransactionPress={() => setScreen("transaction")}
         onDeletePress={handleDeleteCustomer}
+        onBack={() => router.back()}
       />
     </>
   );
@@ -110,8 +99,9 @@ export default function CustomerDetailPage() {
 
 const styles = StyleSheet.create({
   headerButton: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: THEME.primary,
+    marginLeft: 8,
   },
 });

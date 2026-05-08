@@ -1,53 +1,53 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Glassmorphism Design System Tokens
+ * Palette: Deep Slate & Gold Trust
  */
-
-import { Platform } from 'react-native';
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+export const THEME = {
+  background: "#0F172A", // Deep Slate
+  surface: "rgba(30, 41, 59, 0.7)", // Glass Surface
+  border: "rgba(255, 255, 255, 0.1)", // Subtle Glass Border
+  primary: "#F59E0B", // Gold Trust
+  secondary: "#FBBF24", // Amber
+  accent: "#8B5CF6", // Purple Tech
+  success: "#10B981", // Emerald
+  danger: "#EF4444", // Rose
+  warning: "#F59E0B",
+  textMain: "#F8FAFC", // Slate 50
+  textMuted: "#94A3B8", // Slate 400
+  textOnPrimary: "#0F172A",
+  borderRadius: 16,
+  shadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+export const Colors = {
+  light: {
+    text: THEME.textMain,
+    background: THEME.background,
+    tint: THEME.primary,
+    icon: THEME.textMuted,
+    tabIconDefault: THEME.textMuted,
+    tabIconSelected: THEME.primary,
   },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
+  dark: {
+    text: "#FFFFFF",
+    background: "#121417",
+    tint: "#6D5DFC",
+    icon: "#8894AD",
+    tabIconDefault: "#8894AD",
+    tabIconSelected: "#FFFFFF",
   },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+};
+
+export const Fonts = {
+  regular: "Inter-Regular",
+  bold: "Inter-Bold",
+  semiBold: "Inter-SemiBold",
+  rounded: "Inter-Regular",
+  mono: "SpaceMono-Regular",
+};
